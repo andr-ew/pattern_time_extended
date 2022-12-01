@@ -1,5 +1,5 @@
 --- timed pattern event recorder/player
--- reverse option added by @andrew
+-- additional features added by @andrew
 -- @module lib.pattern
 
 local pattern = {}
@@ -123,6 +123,17 @@ function pattern:start()
     self.metro.time = self.time[1] * self.time_factor
     self.metro:start()
   end
+end
+
+--- resume this pattern in the last position after stopping
+function pattern_time:resume()
+    if self.count > 0 then
+        self.prev_time = util.time()
+        self.process(self.event[self.step])
+        self.play = 1
+        self.metro.time = self.time[self.step] * self.time_factor
+        self.metro:start()
+    end
 end
 
 --- process next event
