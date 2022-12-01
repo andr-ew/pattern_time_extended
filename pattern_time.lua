@@ -1,30 +1,45 @@
---- timed pattern event recorder/player
+--- data.timed pattern data.event recorder/player
 -- additional features added by @andrew
 -- @module lib.pattern
 
 local pattern = {}
 pattern.__index = pattern
 
+function pattern.new_data(data)
+  data = data or {}
+  data.event = {}
+  data.time = {}
+  data.count = 0
+
+  return data
+end
+
 --- constructor
-function pattern.new()
+function pattern.new(data)
   local i = {}
   setmetatable(i, pattern)
   i.rec = 0
   i.play = 0
   i.overdub = 0
   i.prev_time = 0
-  i.event = {}
-  i.time = {}
-  i.count = 0
   i.step = 0
   i.time_factor = 1
   i.reverse = false
+  
+  i.data = pattern.new_data(data)
 
   i.metro = metro.init(function() i:next_event() end,1,1)
 
   i.process = function(_) print("event") end
 
   return i
+end
+
+function pattern:assign_data(data)
+    self:rec_stop()
+    self:stop()
+    self.data = data
+    self:start()
 end
 
 --- clear this pattern
@@ -34,9 +49,9 @@ function pattern:clear()
   self.play = 0
   self.overdub = 0
   self.prev_time = 0
-  self.event = {}
-  self.time = {}
-  self.count = 0
+  self.data.event = {}
+  self.data.time = {}
+  self.data.count = 0
   self.step = 0
   self.time_factor = 1
   self.reverse = false
@@ -63,12 +78,12 @@ end
 function pattern:rec_stop()
   if self.rec == 1 then
     self.rec = 0
-    if self.count ~= 0 then
-      --print("count "..self.count)
+    if self.data.count ~= 0 then
+      --print("count "..self.data.count)
       local t = self.prev_time
       self.prev_time = util.time()
-      self.time[self.count] = self.prev_time - t
-      --tab.print(self.time)
+      self.data.time[self.data.count] = self.prev_time - t
+      --tab.print(self.data.time)
     else
       print("pattern_time: no events recorded")
     end 
@@ -87,16 +102,16 @@ end
 
 --- record event
 function pattern:rec_event(e)
-  local c = self.count + 1
+  local c = self.data.count + 1
   if c == 1 then
     self.prev_time = util.time()
   else
     local t = self.prev_time
     self.prev_time = util.time()
-    self.time[c-1] = self.prev_time - t
+    self.data.time[c-1] = self.prev_time - t
   end
-  self.count = c
-  self.event[c] = e
+  self.data.count = c
+  self.data.event[c] = e
 end
 
 -- add overdub event
@@ -104,34 +119,34 @@ end
 --   local c = self.step + 1
 --   local t = self.prev_time
 --   self.prev_time = util.time()
---   local a = self.time[c-1]
---   self.time[c-1] = self.prev_time - t
---   table.insert(self.time, c, a - self.time[c-1])
---   table.insert(self.event, c, e)
+--   local a = self.data.time[c-1]
+--   self.data.time[c-1] = self.prev_data.time - t
+--   table.insert(self.data.time, c, a - self.data.time[c-1])
+--   table.insert(self.data.event, c, e)
 --   self.step = self.step + 1
---   self.count = self.count + 1
+--   self.data.count = self.data.count + 1
 -- end
 
 --- start this pattern
 function pattern:start()
-  if self.count > 0 then
+  if self.data.count > 0 then
     --print("start pattern ")
     self.prev_time = util.time()
-    self.process(self.event[1])
+    self.process(self.data.event[1])
     self.play = 1
     self.step = 1
-    self.metro.time = self.time[1] * self.time_factor
+    self.metro.time = self.data.time[1] * self.time_factor
     self.metro:start()
   end
 end
 
 --- resume this pattern in the last position after stopping
 function pattern:resume()
-    if self.count > 0 then
+    if self.data.count > 0 then
         self.prev_time = util.time()
-        self.process(self.event[self.step])
+        self.process(self.data.event[self.step])
         self.play = 1
-        self.metro.time = self.time[self.step] * self.time_factor
+        self.metro.time = self.data.time[self.step] * self.time_factor
         self.metro:start()
     end
 end
@@ -140,10 +155,10 @@ end
 function pattern:next_event()
   self.prev_time = util.time()
 
-  self.step = util.wrap(self.step + (self.reverse and -1 or 1), 1, self.count)
+  self.step = util.wrap(self.step + (self.reverse and -1 or 1), 1, self.data.count)
 
-  self.process(self.event[self.step])
-  self.metro.time = self.time[self.step] * self.time_factor
+  self.process(self.data.event[self.step])
+  self.metro.time = self.data.time[self.step] * self.time_factor
 
   self.metro:start()
 end
