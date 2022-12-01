@@ -126,7 +126,7 @@ function pattern:start()
 end
 
 --- resume this pattern in the last position after stopping
-function pattern_time:resume()
+function pattern:resume()
     if self.count > 0 then
         self.prev_time = util.time()
         self.process(self.event[self.step])
