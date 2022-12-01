@@ -10,6 +10,7 @@ function pattern.new()
   local i = {}
   setmetatable(i, pattern)
   i.rec = 0
+  i.arm = 0
   i.play = 0
   i.overdub = 0
   i.prev_time = 0
@@ -31,6 +32,7 @@ end
 function pattern:clear()
   self.metro:stop()
   self.rec = 0
+  self.arm = 0
   self.play = 0
   self.overdub = 0
   self.prev_time = 0
@@ -53,9 +55,16 @@ function pattern:set_reverse(reverse)
   self.reverse = reverse
 end
 
+--- arm the pattern. recording will begin on the first event received.
+function pattern:rec_arm()
+  print("pattern arm")
+  self.arm = 1
+end
+
 --- start recording
 function pattern:rec_start()
   print("pattern rec start")
+  self.arm = 0
   self.rec = 1
 end
 
@@ -78,7 +87,10 @@ end
 
 --- watch
 function pattern:watch(e)
-  if self.rec == 1 then
+  if self.arm == 1 then
+    self:rec_start()
+    pattern:watch(e)
+  elseif self.rec == 1 then
     self:rec_event(e)
   elseif self.overdub == 1 then
     self:overdub_event(e)
@@ -100,7 +112,7 @@ function pattern:rec_event(e)
 end
 
 -- add overdub event
--- function pattern:overdub_event(e)
+function pattern:overdub_event(e)
 --   local c = self.step + 1
 --   local t = self.prev_time
 --   self.prev_time = util.time()
@@ -110,7 +122,7 @@ end
 --   table.insert(self.event, c, e)
 --   self.step = self.step + 1
 --   self.count = self.count + 1
--- end
+end
 
 --- start this pattern
 function pattern:start()
@@ -158,12 +170,12 @@ function pattern:stop()
 end
 
 --- set overdub
--- function pattern:set_overdub(s)
+function pattern:set_overdub(s)
 --   if s==1 and self.play == 1 and self.rec == 0 then
 --     self.overdub = 1
 --   else
 --     self.overdub = 0
 --   end
--- end
+end
 
 return pattern
