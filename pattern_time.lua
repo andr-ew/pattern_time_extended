@@ -114,18 +114,19 @@ function pattern:rec_event(e)
   self.data.event[c] = e
 end
 
+-- TODO: fix behavior for reverse playing pattern
 -- add overdub event
--- function pattern:overdub_event(e)
---   local c = self.step + 1
---   local t = self.prev_time
---   self.prev_time = util.time()
---   local a = self.data.time[c-1]
---   self.data.time[c-1] = self.prev_data.time - t
---   table.insert(self.data.time, c, a - self.data.time[c-1])
---   table.insert(self.data.event, c, e)
---   self.step = self.step + 1
---   self.data.count = self.data.count + 1
--- end
+function pattern:overdub_event(e)
+  local c = self.step + 1
+  local t = self.prev_time
+  self.prev_time = util.time()
+  local a = self.data.time[c-1]
+  self.data.time[c-1] = self.prev_time - t
+  table.insert(self.data.time, c, a - self.data.time[c-1])
+  table.insert(self.data.event, c, e)
+  self.step = self.step + 1
+  self.data.count = self.data.count + 1
+end
 
 --- start this pattern
 function pattern:start()
@@ -173,12 +174,12 @@ function pattern:stop()
 end
 
 --- set overdub
--- function pattern:set_overdub(s)
---   if s==1 and self.play == 1 and self.rec == 0 then
---     self.overdub = 1
---   else
---     self.overdub = 0
---   end
--- end
+function pattern:set_overdub(s)
+  if s==1 and self.play == 1 and self.rec == 0 then
+    self.overdub = 1
+  else
+    self.overdub = 0
+  end
+end
 
 return pattern
