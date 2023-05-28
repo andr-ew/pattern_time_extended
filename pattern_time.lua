@@ -14,8 +14,16 @@ function pattern.new_data(data)
   return data
 end
 
+local hook_defaults = {
+    pre_clear = function() end,
+    post_stop = function() end,
+    pre_resume = function() end,
+    pre_rec_stop = function() end,
+    post_rec_start = function() end,
+}
+
 --- constructor
-function pattern.new(data)
+function pattern.new(data, hooks)
   local i = {}
   setmetatable(i, pattern)
   i.rec = 0
@@ -27,12 +35,21 @@ function pattern.new(data)
   i.reverse = false
   
   i.data = pattern.new_data(data)
+  i.hooks = setmetatable(hooks or {}, hook_defaults)
 
   i.metro = metro.init(function() i:next_event() end,1,1)
 
   i.process = function(_) print("event") end
 
   return i
+end
+
+function pattern:set_hook(name, fn)
+    self.hooks[name] = fn
+end
+
+function pattern:set_all_hooks(hooks)
+    self.hooks = setmetatable(hooks or {}, hook_defaults)
 end
 
 function pattern:assign_data(data)
@@ -44,6 +61,8 @@ end
 
 --- clear this pattern
 function pattern:clear()
+  self.hooks.pre_clear()
+
   self.metro:stop()
   self.rec = 0
   self.play = 0
@@ -72,10 +91,14 @@ end
 function pattern:rec_start()
   print("pattern rec start")
   self.rec = 1
+
+  self.hooks.post_rec_start()
 end
 
 --- stop recording
 function pattern:rec_stop()
+  self.hooks.pre_rec_stop()
+
   if self.rec == 1 then
     self.rec = 0
     if self.data.count ~= 0 then
@@ -144,6 +167,8 @@ end
 --- resume this pattern in the last position after stopping
 function pattern:resume()
     if self.data.count > 0 then
+        self.hooks.pre_resume()
+
         self.prev_time = util.time()
         self.process(self.data.event[self.step])
         self.play = 1
@@ -170,6 +195,8 @@ function pattern:stop()
     self.play = 0
     self.overdub = 0
     self.metro:stop()
+
+    self.hooks.post_stop()
   else print("pattern_time: not playing") end
 end
 
@@ -177,7 +204,9 @@ end
 function pattern:set_overdub(s)
   if s==1 and self.play == 1 and self.rec == 0 then
     self.overdub = 1
+    self.hooks.post_rec_start()
   else
+    self.hooks.pre_rec_stop()
     self.overdub = 0
   end
 end
