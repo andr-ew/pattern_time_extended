@@ -1,4 +1,4 @@
---- data.timed pattern data.event recorder/player
+--- timed pattern event recorder/player
 -- additional features added by @andrew
 -- @module lib.pattern
 
@@ -14,8 +14,18 @@ function pattern.new_data(data)
   return data
 end
 
+local hook_defaults = {
+    pre_clear = function() end,
+    post_stop = function() end,
+    pre_resume = function() end,
+    pre_rec_stop = function() end,
+    pre_rec_start = function() end,
+    post_rec_start = function() end,
+}
+hook_defaults.__index = hook_defaults
+
 --- constructor
-function pattern.new(data)
+function pattern.new(data, hooks)
   local i = {}
   setmetatable(i, pattern)
   i.rec = 0
@@ -27,12 +37,21 @@ function pattern.new(data)
   i.reverse = false
   
   i.data = pattern.new_data(data)
+  i.hooks = setmetatable(hooks or {}, hook_defaults)
 
   i.metro = metro.init(function() i:next_event() end,1,1)
 
   i.process = function(_) print("event") end
 
   return i
+end
+
+function pattern:set_hook(name, fn)
+    self.hooks[name] = fn
+end
+
+function pattern:set_all_hooks(hooks)
+    self.hooks = setmetatable(hooks or {}, hook_defaults)
 end
 
 function pattern:assign_data(data)
@@ -43,7 +62,9 @@ function pattern:assign_data(data)
 end
 
 --- clear this pattern
-function pattern:clear()
+function pattern:clear(silent)
+  if not silent then self.hooks.pre_clear() end
+
   self.metro:stop()
   self.rec = 0
   self.play = 0
@@ -69,14 +90,20 @@ function pattern:set_reverse(reverse)
 end
 
 --- start recording
-function pattern:rec_start()
+function pattern:rec_start(silent)
+  if not silent then self.hooks.pre_rec_start() end
+
   print("pattern rec start")
   self.rec = 1
+
+  if not silent then self.hooks.post_rec_start() end
 end
 
 --- stop recording
-function pattern:rec_stop()
+function pattern:rec_stop(silent)
   if self.rec == 1 then
+    if not silent then self.hooks.pre_rec_stop() end
+
     self.rec = 0
     if self.data.count ~= 0 then
       --print("count "..self.data.count)
@@ -142,8 +169,10 @@ function pattern:start()
 end
 
 --- resume this pattern in the last position after stopping
-function pattern:resume()
+function pattern:resume(silent)
     if self.data.count > 0 then
+        if not silent then self.hooks.pre_resume() end
+
         self.prev_time = util.time()
         self.process(self.data.event[self.step])
         self.play = 1
@@ -165,19 +194,24 @@ function pattern:next_event()
 end
 
 --- stop this pattern
-function pattern:stop()
+function pattern:stop(silent)
   if self.play == 1 then
     self.play = 0
     self.overdub = 0
     self.metro:stop()
+
+    if not silent then self.hooks.post_stop() end
   else print("pattern_time: not playing") end
 end
 
 --- set overdub
-function pattern:set_overdub(s)
+function pattern:set_overdub(s, silent)
   if s==1 and self.play == 1 and self.rec == 0 then
+    if not silent then self.hooks.pre_rec_start() end
     self.overdub = 1
+    if not silent then self.hooks.post_rec_start() end
   else
+    if not silent then self.hooks.pre_rec_stop() end
     self.overdub = 0
   end
 end
