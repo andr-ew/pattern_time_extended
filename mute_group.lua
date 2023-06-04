@@ -1,4 +1,4 @@
--- mute group for multiple pattern_time instances. only one pattern active at a time
+-- mute group for multiple pattern_time instances. allows only one pattern to be active at a time
 
 local mute_group = {}
 mute_group.__index = mute_group
@@ -15,7 +15,7 @@ hook_defaults.__index = hook_defaults
 
 local silent = true
 
--- constructor. overwrites hooks for all patterns
+-- constructor. overwrites hooks & process for all patterns. these values should be set via this class and shared between all patterns in the group.
 function mute_group.new(patterns, hooks)
     local i = {}
     setmetatable(i, mute_group)
@@ -23,6 +23,8 @@ function mute_group.new(patterns, hooks)
     i.patterns = patterns or {}
 
     i.hooks = setmetatable(hooks or {}, hook_defaults)
+
+    i.process = function(_) print("event") end
 
     local function stop_all()
         for _,pat in ipairs(i.patterns) do
@@ -56,6 +58,8 @@ function mute_group.new(patterns, hooks)
     }
 
     for _,pat in ipairs(i.patterns) do
+        pat.process = function(...) i.process(...) end
+
         pat:set_all_hooks(i.handlers)
     end
 
@@ -68,6 +72,12 @@ end
 
 function mute_group:set_all_hooks(hooks)
     self.hooks = setmetatable(hooks or {}, hook_defaults)
+end
+
+function mute_group:watch(e)
+    for _,pat in ipairs(self.patterns) do
+        pat:watch(e)
+    end
 end
 
 return mute_group
