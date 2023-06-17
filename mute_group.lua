@@ -26,14 +26,6 @@ function mute_group.new(patterns, hooks)
 
     i.process = function(_) print("event") end
 
-    local function stop_all()
-        for _,pat in ipairs(i.patterns) do
-            pat:rec_stop()
-            pat:set_overdub(0)
-            pat:stop()
-        end
-    end
-
     i.handlers = {
         pre_clear = function() 
             i.hooks.pre_clear()
@@ -42,14 +34,14 @@ function mute_group.new(patterns, hooks)
             i.hooks.post_stop()
         end,
         pre_resume = function() 
-            stop_all()
+            i:stop()
             i.hooks.pre_resume()
         end,
         pre_rec_stop = function() 
             i.hooks.pre_rec_stop()
         end,
         pre_rec_start = function() 
-            stop_all()
+            i:stop()
             i.hooks.pre_rec_start()
         end,
         post_rec_start = function() 
@@ -65,7 +57,7 @@ function mute_group.new(patterns, hooks)
 
     return i
 end
-
+    
 function mute_group:set_hook(name, fn)
     self.hooks[name] = fn
 end
@@ -77,6 +69,23 @@ end
 function mute_group:watch(e)
     for _,pat in ipairs(self.patterns) do
         pat:watch(e)
+    end
+end
+
+function mute_group:stop()
+    for _,pat in ipairs(self.patterns) do
+        pat:rec_stop()
+        pat:set_overdub(0)
+        pat:stop()
+    end
+end
+
+-- note: returns nil if no pattern is playing
+function mute_group:get_playing_pattern()
+    for _,pat in ipairs(self.patterns) do
+        if pat.play == 1 then
+            return pat
+        end
     end
 end
 
