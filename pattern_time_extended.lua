@@ -216,4 +216,34 @@ function pattern:set_overdub(s, silent)
   end
 end
 
+--- export pattern data as a table, can be written to disk w/ tab.save
+--- note: this data contains table references, not copies
+function pattern:export()
+    local pat = self
+    local d = {}
+    d.data = pat.data
+    d.time_factor = pat.time_factor
+    d.step = pat.step
+    d.play = pat.play
+    
+    return d
+end
+
+--- import pattern data exported from pattern.export
+function pattern:import(d, play_on_import)
+    if d then
+        for k,v in pairs(d) do
+            self[k] = v
+        end
+
+        if self.play > 0 then
+            if play_on_import then 
+                self:start()
+            else
+                self.play = 0
+            end
+        end
+    end
+end
+
 return pattern
