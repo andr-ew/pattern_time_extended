@@ -35,6 +35,7 @@ function pattern.new(data, hooks)
   i.step = 0
   i.time_factor = 1
   i.reverse = false
+  i.loop = true
   
   i.data = pattern.new_data(data)
   i.hooks = setmetatable(hooks or {}, hook_defaults)
@@ -76,6 +77,7 @@ function pattern:clear(silent)
   self.step = 0
   self.time_factor = 1
   self.reverse = false
+  self.loop = true
 end
 
 --- adjust the time factor of this pattern.
@@ -83,10 +85,17 @@ end
 function pattern:set_time_factor(f)
   self.time_factor = f or 1
 end
+
 --- adjust the direction of this pattern.
 -- @tparam boolean reverse
 function pattern:set_reverse(reverse)
   self.reverse = reverse
+end
+
+--- set to false to disable looping of this pattern. default true
+-- @tparam boolean reverse
+function pattern:set_loop(loop)
+  self.loop = loop
 end
 
 --- start recording
@@ -112,9 +121,9 @@ function pattern:rec_stop(silent)
       self.data.time[self.data.count] = self.prev_time - t
       --tab.print(self.data.time)
     else
-      print("pattern_time: no events recorded")
+      --print("pattern_time: no events recorded")
     end 
-  else print("pattern_time: not recording")
+  --else print("pattern_time: not recording")
   end
 end
 
@@ -174,6 +183,7 @@ function pattern:resume(silent)
         if not silent then self.hooks.pre_resume() end
 
         self.prev_time = util.time()
+        self.step = util.wrap(self.step, 1, self.data.count)
         self.process(self.data.event[self.step])
         self.play = 1
         self.metro.time = self.data.time[self.step] * self.time_factor
@@ -183,14 +193,27 @@ end
 
 --- process next event
 function pattern:next_event()
-  self.prev_time = util.time()
+  local next_step = self.step + (self.reverse and -1 or 1)
 
-  self.step = util.wrap(self.step + (self.reverse and -1 or 1), 1, self.data.count)
+  if self.loop then 
+    next_step = util.wrap(next_step, 1, self.data.count) 
+  end
 
-  self.process(self.data.event[self.step])
-  self.metro.time = self.data.time[self.step] * self.time_factor
+  self.step = next_step
 
-  self.metro:start()
+  if self.step <= self.data.count and self.step > 0 then
+    self.prev_time = util.time()
+
+    self.process(self.data.event[self.step])
+    self.metro.time = self.data.time[self.step] * self.time_factor
+
+    self.metro:start()
+  end
+  
+  if (not self.loop) and (self.step == self.data.count or next_step == 1) then
+    self:stop()
+    self.step = self.step + 1
+  end
 end
 
 --- stop this pattern
@@ -201,7 +224,8 @@ function pattern:stop(silent)
     self.metro:stop()
 
     if not silent then self.hooks.post_stop() end
-  else print("pattern_time: not playing") end
+  --else print("pattern_time: not playing") end
+  end
 end
 
 --- set overdub
@@ -225,6 +249,8 @@ function pattern:export()
     d.time_factor = pat.time_factor
     d.step = pat.step
     d.play = pat.play
+    d.reverse = pat.reverse
+    d.loop = pat.loop
     
     return d
 end
