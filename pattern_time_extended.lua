@@ -265,7 +265,6 @@ function pattern:import(d, play_on_import)
 
         if self.play > 0 then
             if play_on_import then 
-                print('playing in import')
                 self:start()
             else
                 self.play = 0
