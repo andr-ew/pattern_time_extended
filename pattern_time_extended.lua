@@ -40,11 +40,21 @@ function pattern.new(data, hooks)
   i.data = pattern.new_data(data)
   i.hooks = setmetatable(hooks or {}, hook_defaults)
 
-  i.metro = metro.init(function() i:next_event() end,1,1)
+  -- i.metro = metro.init(function() i:next_event() end,1,1)
+  i.clock = -1
+  i.clock_time = 1
 
   i.process = function(_) print("event") end
 
   return i
+end
+
+function pattern:start_clock()
+    clock.cancel(self.clock)
+    clock.run(function()
+        self:next_event()
+        clock.sleep(self.clock_time)
+    end)
 end
 
 function pattern:set_hook(name, fn)
@@ -66,7 +76,8 @@ end
 function pattern:clear(silent)
   if not silent then self.hooks.pre_clear() end
 
-  self.metro:stop()
+  -- self.metro:stop()
+  clock.cancel(self.clock)
   self.rec = 0
   self.play = 0
   self.overdub = 0
@@ -172,8 +183,10 @@ function pattern:start()
     self.process(self.data.event[1])
     self.play = 1
     self.step = 1
-    self.metro.time = self.data.time[1] * self.time_factor
-    self.metro:start()
+    -- self.metro.time = self.data.time[1] * self.time_factor
+    self.clock_time = self.data.time[1] * self.time_factor
+    -- self.metro:start()
+    self:start_clock()
   end
 end
 
@@ -186,8 +199,12 @@ function pattern:resume(silent)
         self.step = util.wrap(self.step, 1, self.data.count)
         self.process(self.data.event[self.step])
         self.play = 1
-        self.metro.time = self.data.time[self.step] * self.time_factor
-        self.metro:start()
+        -- self.metro.time = self.data.time[self.step] * self.time_factor
+        self.clock_time = self.data.time[self.step] * self.time_factor
+        -- self.metro:start()
+        -- clock.cancel(self.clock)
+        -- clock.run(self.clock_fn)
+        self:start_clock()
     end
 end
 
@@ -205,14 +222,19 @@ function pattern:next_event()
     self.prev_time = util.time()
 
     self.process(self.data.event[self.step])
-    self.metro.time = self.data.time[self.step] * self.time_factor
+    -- self.metro.time = self.data.time[self.step] * self.time_factor
+    self.clock_time = self.data.time[self.step] * self.time_factor
+    -- self.metro:start()
+    clock.cancel(self.clock)
+    clock.run(self.clock_fn)
 
-    self.metro:start()
+    -- self.metro:start()
   end
   
   if (not self.loop) and (self.step == self.data.count or next_step == 1) then
     -- self:stop()
-    self.metro:stop()
+    -- self.metro:stop()
+    clock.cancel(self.clock)
     self.step = self.step + 1
   end
 end
@@ -222,7 +244,8 @@ function pattern:stop(silent)
   if self.play == 1 then
     self.play = 0
     self.overdub = 0
-    self.metro:stop()
+    clock.cancel(self.clock)
+    -- self.metro:stop()
 
     if not silent then self.hooks.post_stop() end
   --else print("pattern_time: not playing") end
