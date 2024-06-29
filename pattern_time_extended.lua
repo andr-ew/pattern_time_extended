@@ -40,7 +40,8 @@ function pattern.new(data, hooks)
   i.data = pattern.new_data(data)
   i.hooks = setmetatable(hooks or {}, hook_defaults)
 
-  i.metro = metro.init(function() i:next_event() end,1,1)
+  -- i.metro = metro.init(function() i:next_event() end,1,1)
+  i.metro = nil
 
   i.process = function(_) print("event") end
 
@@ -62,11 +63,26 @@ function pattern:assign_data(data)
     self:start()
 end
 
+function pattern:start_metro(time)
+  if not self.metro then self.metro = metro.init(function() self:next_event() end,1,1) end
+    
+  self.metro.time = time * self.time_factor
+  self.metro:start()
+end
+
+function pattern:stop_metro()
+  local m = self.metro
+  if m then 
+    m:stop() 
+    metro.free(m.id)
+  end
+end
+
 --- clear this pattern
 function pattern:clear(silent)
   if not silent then self.hooks.pre_clear() end
+  self:stop_metro()
 
-  self.metro:stop()
   self.rec = 0
   self.play = 0
   self.overdub = 0
@@ -172,8 +188,7 @@ function pattern:start()
     self.process(self.data.event[1])
     self.play = 1
     self.step = 1
-    self.metro.time = self.data.time[1] * self.time_factor
-    self.metro:start()
+    self:start_metro(self.data.time[1])
   end
 end
 
@@ -186,8 +201,7 @@ function pattern:resume(silent)
         self.step = util.wrap(self.step, 1, self.data.count)
         self.process(self.data.event[self.step])
         self.play = 1
-        self.metro.time = self.data.time[self.step] * self.time_factor
-        self.metro:start()
+        self:start_metro(self.data.time[self.step])
     end
 end
 
@@ -205,14 +219,13 @@ function pattern:next_event()
     self.prev_time = util.time()
 
     self.process(self.data.event[self.step])
-    self.metro.time = self.data.time[self.step] * self.time_factor
 
-    self.metro:start()
+    self:start_metro(self.data.time[self.step])
   end
   
   if (not self.loop) and (self.step == self.data.count or next_step == 1) then
     -- self:stop()
-    self.metro:stop()
+    self:stop_metro()
     self.step = self.step + 1
   end
 end
@@ -222,7 +235,7 @@ function pattern:stop(silent)
   if self.play == 1 then
     self.play = 0
     self.overdub = 0
-    self.metro:stop()
+    self:stop_metro()
 
     if not silent then self.hooks.post_stop() end
   --else print("pattern_time: not playing") end
