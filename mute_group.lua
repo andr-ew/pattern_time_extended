@@ -82,9 +82,9 @@ end
 
 -- note: returns nil if no pattern is playing
 function mute_group:get_playing_pattern()
-    for _,pat in ipairs(self.patterns) do
+    for i,pat in ipairs(self.patterns) do
         if pat.play == 1 then
-            return pat
+            return pat, i
         end
     end
 end
