@@ -42,6 +42,32 @@ function factory:get_filtered_watch(event_index_id)
     --TODO: return a pattern_time:watch method that filters own ids in the event table, at the index specified
 end
 
+function factory:get_shim(param_setter)
+    local param_ids = self.param_ids
+    local single = self.typ == 'single'
+    local setter = param_setter or function(id, v) params:set(id, v) end
+
+    local function make_shim(pat, ids)
+        local sh = setmetatable({}, { __index = pat })
+
+        sh.is_shim = true
+
+        return sh
+    end
+
+    local shim
+    if single then
+        shim = make_shim(self.pattern_time, param_ids)
+    else
+        shim = {}
+        for i,pattern_time in ipairs(self.group) do
+            shim[i] = make_shim(pattern_time, param_ids[i])
+        end
+    end
+
+    return shim
+end
+
 function factory:add_params(action)
     local param_ids = self.param_ids
     local single = self.typ == 'single'
