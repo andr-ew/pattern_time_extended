@@ -16,11 +16,13 @@ hook_defaults.__index = hook_defaults
 local silent = true
 
 -- constructor. overwrites hooks & process for all patterns. these values should be set via this class and shared between all patterns in the group.
-function mute_group.new(patterns, hooks)
+function mute_group.new(patterns, hooks, param_ids)
     local i = {}
     setmetatable(i, mute_group)
 
     i.patterns = patterns or {}
+    
+    i.param_ids = param_ids
 
     i.hooks = setmetatable(hooks or {}, hook_defaults)
 
@@ -73,10 +75,15 @@ function mute_group:watch(e)
 end
 
 function mute_group:stop()
-    for _,pat in ipairs(self.patterns) do
+    for i,pat in ipairs(self.patterns) do
         pat:rec_stop()
         pat:set_overdub(0)
-        pat:stop()
+
+        -- if self.param_ids then
+        --     params:delta(self.param_ids[i].stop)
+        -- else
+            pat:stop()
+        -- end
     end
 end
 
