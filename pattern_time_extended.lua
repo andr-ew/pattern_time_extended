@@ -65,6 +65,7 @@ end
 
 function pattern:start_metro(time)
   if not self.metro then self.metro = metro.init(function() self:next_event() end,1,1) end
+  -- self.metro = metro.init(function() self:next_event() end,1,1)
     
   self.metro.time = time * self.time_factor
   self.metro:start()
@@ -75,6 +76,7 @@ function pattern:stop_metro()
   if m then 
     m:stop() 
     metro.free(m.id)
+    self.metro = nil
   end
 end
 
