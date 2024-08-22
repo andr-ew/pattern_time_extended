@@ -63,12 +63,18 @@ function factory:get_shim(param_setter)
         for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
             rawset(sh, k, function(self)
                 local id = ids[k]
+                
+                print('shim action: '..k)
+
                 setter(id, params:get(id) ~ 1)
             end)
         end
-        for _,k in ipairs({ 'time_factor', 'reverse', 'loop' }) do
+        rawset(sh, 'set_time_factor', function(self, v)
+            setter(ids.time_factor, v)
+        end)
+        for _,k in ipairs({ 'reverse', 'loop' }) do
             rawset(sh, 'set_'..k, function(self, v)
-                setter(ids[k], v)
+                setter(ids[k], v > 0)
             end)
         end
 
@@ -96,19 +102,31 @@ function factory:add_params(action)
     local function add_playback(pat, ids, name_postfix)
         params:add{
             id = ids.start, name = 'start'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:start(); action() end
+            action = function() 
+                print('param action: start')
+                pat:start(); action() 
+            end
         }
         params:add{
             id = ids.resume, name = 'resume'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:resume(); action() end
+            action = function() 
+                print('param action: resume')
+                pat:resume(); action() 
+            end
         }
         params:add{
             id = ids.stop, name = 'stop'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:stop(); action() end
+            action = function() 
+                print('param action: stop')
+                pat:stop(); action() 
+            end
         }
         params:add{
             id = ids.clear, name = 'clear'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:clear(); action() end
+            action = function() 
+                print('param action: clear')
+                pat:clear(); action() 
+            end
         }
     end
 
@@ -147,7 +165,7 @@ function factory:add_params(action)
                 single and function(v) pattern_time:set_reverse(v); action() end
                 or function(v)
                     for i,pattern_time in ipairs(self.group) do
-                        pattern_time:set_reverse(v)
+                        pattern_time:set_reverse(v > 0)
                     end
                     action()
                 end
@@ -159,7 +177,7 @@ function factory:add_params(action)
                 single and function(v) pattern_time:set_loop(v); action() end
                 or function(v)
                     for i,pattern_time in ipairs(self.group) do
-                        pattern_time:set_loop(v)
+                        pattern_time:set_loop(v > 0)
                     end
                     action()
                 end
