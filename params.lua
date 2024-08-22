@@ -15,9 +15,9 @@ function factory:new(prefix, typ, pattern_time)
     end
 
     local function make_ids(i) return {
-        play = single and prefix..'_play' or prefix..'_play_'..i,
-        retrigger = single and prefix..'_retrigger' or prefix..'_retrigger_'..i,
-        clear = single and prefix..'_clear' or prefix..'_clear_'..i,
+        -- play = single and prefix..'_play' or prefix..'_play_'..i,
+        -- retrigger = single and prefix..'_retrigger' or prefix..'_retrigger_'..i,
+        -- clear = single and prefix..'_clear' or prefix..'_clear_'..i,
         time_factor = prefix..'_time_factor',
         reverse = prefix..'_reverse',
         loop = prefix..'_loop',
@@ -32,7 +32,8 @@ function factory:new(prefix, typ, pattern_time)
         end
     end
 
-    o.params_count = single and tab.count(o.param_ids) or (3 + (#o.group * 3))
+    -- o.params_count = single and tab.count(o.param_ids) or (3 + (#o.group * 3))
+    o.params_count = tab.count(o.param_ids)
 
     return o
 end
@@ -41,73 +42,73 @@ end
     --TODO: return a pattern_time:watch method that filters own ids in the event table, at the index specified
 -- end
 
-function factory:get_shim(param_setter)
-    local param_ids = self.param_ids
-    local single = self.typ == 'single'
-    local setter = param_setter or function(id, v) params:set(id, v) end
+-- function factory:get_shim(param_setter)
+--     local param_ids = self.param_ids
+--     local single = self.typ == 'single'
+--     local setter = param_setter or function(id, v) params:set(id, v) end
 
-    local function make_shim(pat, ids)
-        local sh = setmetatable({}, { 
-            -- __index = pat 
-            __index = function(t, k)
-                return pat[k]
-            end,
-            __newindex = function(t, k, v)
-                pat[k] = v
-            end
-        })
+--     local function make_shim(pat, ids)
+--         local sh = setmetatable({}, { 
+--             -- __index = pat 
+--             __index = function(t, k)
+--                 return pat[k]
+--             end,
+--             __newindex = function(t, k, v)
+--                 pat[k] = v
+--             end
+--         })
 
-        sh.is_shim = true
+--         sh.is_shim = true
 
-        -- for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
-        --     rawset(sh, k, function(self)
-        --         local id = ids[k]
-        --         setter(id, params:get(id) ~ 1)
-        --     end)
-        -- end
+--         -- for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
+--         --     rawset(sh, k, function(self)
+--         --         local id = ids[k]
+--         --         setter(id, params:get(id) ~ 1)
+--         --     end)
+--         -- end
         
-        rawset(sh, 'start', function(self) 
-            print('shim action: start')
-            local id = ids.retrigger
-            setter(id, params:get(id) ~ 1)
-        end)
-        rawset(sh, 'resume', function(self) 
-            print('shim action: resume')
-            setter(ids.play, 1)
-        end)
-        rawset(sh, 'stop', function(self) 
-            print('shim action: stop')
-            setter(ids.play, 0)
-        end)
-        rawset(sh, 'clear', function(self) 
-            local id = ids.clear
-            setter(id, params:get(id) ~ 1)
-        end)
+--         rawset(sh, 'start', function(self) 
+--             print('shim action: start')
+--             local id = ids.retrigger
+--             setter(id, params:get(id) ~ 1)
+--         end)
+--         rawset(sh, 'resume', function(self) 
+--             print('shim action: resume')
+--             setter(ids.play, 1)
+--         end)
+--         rawset(sh, 'stop', function(self) 
+--             print('shim action: stop')
+--             setter(ids.play, 0)
+--         end)
+--         rawset(sh, 'clear', function(self) 
+--             local id = ids.clear
+--             setter(id, params:get(id) ~ 1)
+--         end)
 
-        rawset(sh, 'set_time_factor', function(self, v)
-            setter(ids.time_factor, v)
-        end)
-        for _,k in ipairs({ 'reverse', 'loop' }) do
-            rawset(sh, 'set_'..k, function(self, v)
-                setter(ids[k], v > 0)
-            end)
-        end
+--         rawset(sh, 'set_time_factor', function(self, v)
+--             setter(ids.time_factor, v)
+--         end)
+--         for _,k in ipairs({ 'reverse', 'loop' }) do
+--             rawset(sh, 'set_'..k, function(self, v)
+--                 setter(ids[k], v > 0)
+--             end)
+--         end
 
-        return sh
-    end
+--         return sh
+--     end
 
-    local shim
-    if single then
-        shim = make_shim(self.pattern_time, param_ids)
-    else
-        shim = {}
-        for i,pattern_time in ipairs(self.group) do
-            shim[i] = make_shim(pattern_time, param_ids[i])
-        end
-    end
+--     local shim
+--     if single then
+--         shim = make_shim(self.pattern_time, param_ids)
+--     else
+--         shim = {}
+--         for i,pattern_time in ipairs(self.group) do
+--             shim[i] = make_shim(pattern_time, param_ids[i])
+--         end
+--     end
 
-    return shim
-end
+--     return shim
+-- end
 
 function factory:add_params(action)
     local param_ids = self.param_ids
@@ -127,46 +128,46 @@ function factory:add_params(action)
         --     id = ids.stop, name = 'stop'..name_postfix, type = 'binary', behavior = 'trigger',
         --     action = function() pat:stop(); action() end
         -- }
-        local silent = true
-        params:add{
-            id = ids.play, name = 'play '..name_postfix, 
-            type = 'binary', behavior = 'toggle', default = 0, 
-            action = function(v)
-                print('param value play: '..v)
-                if v>0 then
-                    print('param action resume')
-                    pat:resume()
-                else
-                    print('param action stop')
-                    pat:stop()
-                end
+        -- local silent = true
+        -- params:add{
+        --     id = ids.play, name = 'play '..name_postfix, 
+        --     type = 'binary', behavior = 'toggle', default = 0, 
+        --     action = function(v)
+        --         print('param value play: '..v)
+        --         if v>0 then
+        --             print('param action resume')
+        --             pat:resume()
+        --         else
+        --             print('param action stop')
+        --             pat:stop()
+        --         end
 
-                action()
-            end
-        }
-        params:add{
-            id = ids.retrigger, name = 'retrigger '..name_postfix, 
-            type = 'binary', behavior = 'trigger',
-            action = function() 
-                print('param action retrigger')
-                pat:start()
-                params:set(ids.play, 1, silent)
-                action() 
-            end
-        }
-        params:add{
-            id = ids.clear, name = 'clear'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:clear(); action() end
-        }
+        --         action()
+        --     end
+        -- }
+        -- params:add{
+        --     id = ids.retrigger, name = 'retrigger '..name_postfix, 
+        --     type = 'binary', behavior = 'trigger',
+        --     action = function() 
+        --         print('param action retrigger')
+        --         pat:start()
+        --         params:set(ids.play, 1, silent)
+        --         action() 
+        --     end
+        -- }
+        -- params:add{
+        --     id = ids.clear, name = 'clear'..name_postfix, type = 'binary', behavior = 'trigger',
+        --     action = function() pat:clear(); action() end
+        -- }
     end
 
-    if single then
-        add_playback(self.pattern_time, param_ids, '')
-    else
-        for i,pattern_time in ipairs(self.group) do
-            add_playback(pattern_time, param_ids[i], ' '..i)
-        end
-    end
+    -- if single then
+    --     add_playback(self.pattern_time, param_ids, '')
+    -- else
+    --     for i,pattern_time in ipairs(self.group) do
+    --         add_playback(pattern_time, param_ids[i], ' '..i)
+    --     end
+    -- end
 
     do
         local ids = single and param_ids or param_ids[1]
