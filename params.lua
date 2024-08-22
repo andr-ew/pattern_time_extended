@@ -32,7 +32,7 @@ function factory:new(prefix, typ, pattern_time)
         end
     end
 
-    o.params_count = single and tab.count(o.param_ids) or (3 + (#o.group * 4))
+    o.params_count = single and tab.count(o.param_ids) or (3 + (#o.group * 3))
 
     return o
 end
@@ -67,14 +67,29 @@ function factory:get_shim(param_setter)
         -- end
         
         rawset(sh, 'start', function(self) 
+            print('shim action: start')
             local id = ids.retrigger
             setter(id, params:get(id) ~ 1)
         end)
+        rawset(sh, 'resume', function(self) 
+            print('shim action: resume')
+            setter(ids.play, 1)
+        end)
+        rawset(sh, 'stop', function(self) 
+            print('shim action: stop')
+            setter(ids.play, 0)
+        end)
+        rawset(sh, 'clear', function(self) 
+            local id = ids.clear
+            setter(id, params:get(id) ~ 1)
+        end)
 
-
-        for _,k in ipairs({ 'time_factor', 'reverse', 'loop' }) do
+        rawset(sh, 'set_time_factor', function(self, v)
+            setter(ids.time_factor, v)
+        end)
+        for _,k in ipairs({ 'reverse', 'loop' }) do
             rawset(sh, 'set_'..k, function(self, v)
-                setter(ids[k], v)
+                setter(ids[k], v > 0)
             end)
         end
 
@@ -112,24 +127,28 @@ function factory:add_params(action)
         --     id = ids.stop, name = 'stop'..name_postfix, type = 'binary', behavior = 'trigger',
         --     action = function() pat:stop(); action() end
         -- }
+        local silent = true
         params:add{
             id = ids.play, name = 'play '..name_postfix, 
             type = 'binary', behavior = 'toggle', default = 0, 
             action = function(v)
+                print('param value play: '..v)
                 if v>0 then
+                    print('param action resume')
                     pat:resume()
                 else
+                    print('param action stop')
                     pat:stop()
                 end
 
                 action()
             end
         }
-        local silent = true
         params:add{
             id = ids.retrigger, name = 'retrigger '..name_postfix, 
             type = 'binary', behavior = 'trigger',
             action = function() 
+                print('param action retrigger')
                 pat:start()
                 params:set(ids.play, 1, silent)
                 action() 
@@ -176,7 +195,7 @@ function factory:add_params(action)
                 single and function(v) pattern_time:set_reverse(v); action() end
                 or function(v)
                     for i,pattern_time in ipairs(self.group) do
-                        pattern_time:set_reverse(v)
+                        pattern_time:set_reverse(v > 0)
                     end
                     action()
                 end
@@ -188,7 +207,7 @@ function factory:add_params(action)
                 single and function(v) pattern_time:set_loop(v); action() end
                 or function(v)
                     for i,pattern_time in ipairs(self.group) do
-                        pattern_time:set_loop(v)
+                        pattern_time:set_loop(v > 0)
                     end
                     action()
                 end
