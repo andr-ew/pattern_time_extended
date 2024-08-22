@@ -15,9 +15,8 @@ function factory:new(prefix, typ, pattern_time)
     end
 
     local function make_ids(i) return {
-        start = single and prefix..'_start' or prefix..'_start_'..i,
-        resume = single and prefix..'_resume' or prefix..'_resume_'..i,
-        stop = single and prefix..'_stop' or prefix..'_stop_'..i,
+        play = single and prefix..'_play' or prefix..'_play_'..i,
+        retrigger = single and prefix..'_retrigger' or prefix..'_retrigger_'..i,
         clear = single and prefix..'_clear' or prefix..'_clear_'..i,
         time_factor = prefix..'_time_factor',
         reverse = prefix..'_reverse',
@@ -60,12 +59,19 @@ function factory:get_shim(param_setter)
 
         sh.is_shim = true
 
-        for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
-            rawset(sh, k, function(self)
-                local id = ids[k]
-                setter(id, params:get(id) ~ 1)
-            end)
-        end
+        -- for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
+        --     rawset(sh, k, function(self)
+        --         local id = ids[k]
+        --         setter(id, params:get(id) ~ 1)
+        --     end)
+        -- end
+        
+        rawset(sh, 'start', function(self) 
+            local id = ids.retrigger
+            setter(id, params:get(id) ~ 1)
+        end)
+
+
         for _,k in ipairs({ 'time_factor', 'reverse', 'loop' }) do
             rawset(sh, 'set_'..k, function(self, v)
                 setter(ids[k], v)
@@ -94,17 +100,40 @@ function factory:add_params(action)
     local action = action or function() end
 
     local function add_playback(pat, ids, name_postfix)
+        -- params:add{
+        --     id = ids.start, name = 'start'..name_postfix, type = 'binary', behavior = 'trigger',
+        --     action = function() pat:start(); action() end
+        -- }
+        -- params:add{
+        --     id = ids.resume, name = 'resume'..name_postfix, type = 'binary', behavior = 'trigger',
+        --     action = function() pat:resume(); action() end
+        -- }
+        -- params:add{
+        --     id = ids.stop, name = 'stop'..name_postfix, type = 'binary', behavior = 'trigger',
+        --     action = function() pat:stop(); action() end
+        -- }
         params:add{
-            id = ids.start, name = 'start'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:start(); action() end
+            id = ids.play, name = 'play '..name_postfix, 
+            type = 'binary', behavior = 'toggle', default = 0, 
+            action = function(v)
+                if v>0 then
+                    pat:resume()
+                else
+                    pat:stop()
+                end
+
+                action()
+            end
         }
+        local silent = true
         params:add{
-            id = ids.resume, name = 'resume'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:resume(); action() end
-        }
-        params:add{
-            id = ids.stop, name = 'stop'..name_postfix, type = 'binary', behavior = 'trigger',
-            action = function() pat:stop(); action() end
+            id = ids.retrigger, name = 'retrigger '..name_postfix, 
+            type = 'binary', behavior = 'trigger',
+            action = function() 
+                pat:start()
+                params:set(ids.play, 1, silent)
+                action() 
+            end
         }
         params:add{
             id = ids.clear, name = 'clear'..name_postfix, type = 'binary', behavior = 'trigger',
