@@ -38,9 +38,9 @@ function factory:new(prefix, typ, pattern_time)
     return o
 end
 
-function factory:get_filtered_watch(event_index_id)
+-- function factory:get_filtered_watch(event_index_id)
     --TODO: return a pattern_time:watch method that filters own ids in the event table, at the index specified
-end
+-- end
 
 function factory:get_shim(param_setter)
     local param_ids = self.param_ids
@@ -48,9 +48,29 @@ function factory:get_shim(param_setter)
     local setter = param_setter or function(id, v) params:set(id, v) end
 
     local function make_shim(pat, ids)
-        local sh = setmetatable({}, { __index = pat })
+        local sh = setmetatable({}, { 
+            -- __index = pat 
+            __index = function(t, k)
+                return pat[k]
+            end,
+            __newindex = function(t, k, v)
+                pat[k] = v
+            end
+        })
 
         sh.is_shim = true
+
+        for _,k in ipairs({ 'start', 'resume', 'stop', 'clear' }) do
+            rawset(sh, k, function(self)
+                local id = ids[k]
+                setter(id, params:get(id) ~ 1)
+            end)
+        end
+        for _,k in ipairs({ 'time_factor', 'reverse', 'loop' }) do
+            rawset(sh, 'set_'..k, function(self, v)
+                setter(ids[k], v)
+            end)
+        end
 
         return sh
     end
