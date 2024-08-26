@@ -33,7 +33,8 @@ function factory:new(prefix, typ, pattern_time)
     end
 
     -- o.params_count = single and tab.count(o.param_ids) or (3 + (#o.group * 3))
-    o.params_count = tab.count(o.param_ids)
+    -- o.params_count = tab.count(o.param_ids)
+    o.params_count = 3
 
     return o
 end
